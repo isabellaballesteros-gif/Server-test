@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Demo - Real-time Communication</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .connected {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4CAF50;
+        }
+        
+        .disconnected {
+            background: rgba(244, 67, 54, 0.3);
+            border: 2px solid #f44336;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            min-width: 200px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .send-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .send-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .clear-btn {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .clear-btn:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+        
+        .messages {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .message.sent {
+            background: rgba(76, 175, 80, 0.3);
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .message.received {
+            background: rgba(33, 150, 243, 0.3);
+            border-left: 4px solid #2196F3;
+        }
+        
+        .message.system {
+            background: rgba(255, 193, 7, 0.3);
+            border-left: 4px solid #FFC107;
+            font-style: italic;
+        }
+        
+        .timestamp {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-right: 10px;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #FFC107;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .user-count {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WebSocket Real-time Demo</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected from server
+        </div>
+        
+        <div id="userCount" class="user-count">
+            👥 Connected users: <span id="count">0</span>
+        </div>
+        
+        <div class="controls">
+            <input type="text" id="messageInput" placeholder="Type your message here..." maxlength="200">
+            <button class="send-btn" onclick="sendMessage()">Send Message</button>
+            <button class="clear-btn" onclick="clearMessages()">Clear Messages</button>
+        </div>
+        
+        <div id="messages" class="messages"></div>
+        
+        <div class="instructions">
+            <h3>📋 How to test real-time communication:</h3>
+            <ol>
+                <li>Open this page in multiple browser tabs or windows</li>
+                <li>Type a message in one tab and press Send</li>
+                <li>Watch the message appear instantly in all other tabs!</li>
+                <li>Try typing in different tabs to see the real-time updates</li>
+                <li>The user count shows how many tabs/windows are connected</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const userCountSpan = document.getElementById('count');
+        
+        let eventSource = null;
+        let messageCount = 0;
+        
+        // Connect to Server-Sent Events
+        function connectSSE() {
+            eventSource = new EventSource('/events');
+            
+            eventSource.onopen = () => {
+                statusDiv.textContent = '✅ Connected to server';
+                statusDiv.className = 'status connected';
+                addSystemMessage('Connected to server!');
+            };
+            
+            eventSource.onerror = () => {
+                statusDiv.textContent = '❌ Disconnected from server';
+                statusDiv.className = 'status disconnected';
+                addSystemMessage('Disconnected from server');
+                // Try to reconnect after 3 seconds
+                setTimeout(connectSSE, 3000);
+            };
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'userCount') {
+                        userCountSpan.textContent = data.count;
+                    } else if (data.type === 'message') {
+                        addMessage(data.message, data.timestamp, 'received');
+                    }
+                } catch (error) {
+                    console.error('Error parsing SSE data:', error);
+                }
+            };
+        }
+        
+        // Send message function
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                // Send message to server
+                fetch('/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message, timestamp })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage(message, timestamp, 'sent');
+                        messageInput.value = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                    addSystemMessage('Error sending message');
+                });
+            }
+        }
+        
+        // Add message to the display
+        function addMessage(message, timestamp, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `
+                <span class="timestamp">${timestamp}</span>
+                <span>${message}</span>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Add system message
+        function addSystemMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `
+                <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+                <span>${message}</span>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Clear messages
+        function clearMessages() {
+            messagesDiv.innerHTML = '';
+            messageCount = 0;
+        }
+        
+        // Send message on Enter key
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Focus on input when page loads
+        window.addEventListener('load', () => {
+            messageInput.focus();
+            connectSSE(); // Start the SSE connection
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>

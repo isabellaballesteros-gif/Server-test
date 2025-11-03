@@ -1,0 +1,13 @@
+{
+  "name": "websocket-demo-server",
+  "version": "1.0.0",
+  "description": "A Node.js server with real-time communication using Server-Sent Events",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["node", "server", "sse", "realtime"],
+  "author": "",
+  "license": "MIT"
+}
